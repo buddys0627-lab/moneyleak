@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0A0A0A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="MoneyLeak">
+<title>MoneyLeak - AIがお金のリークを暴く</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+/* =========================================
+   RESET & BASE
+========================================= */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN',sans-serif;background:#0A0A0A;color:#fff;overflow-x:hidden}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,select{font-family:inherit}
+
+/* =========================================
+   SCREENS
+========================================= */
+.screen{display:none;min-height:100dvh;flex-direction:column}
+.screen.active{display:flex}
+
+/* =========================================
+   ONBOARDING
+========================================= */
+#screen-onboard{background:#0A0A0A;padding:0;justify-content:center;align-items:center}
+.ob-inner{padding:40px 24px;width:100%;max-width:390px;margin:0 auto}
+.ob-step{display:none}
+.ob-step.active{display:block}
+.ob-eyebrow{font-size:11px;color:#E8503A;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px}
+.ob-headline{font-size:32px;font-weight:600;line-height:1.15;margin-bottom:12px;letter-spacing:-.02em}
+.ob-sub{font-size:15px;color:#888;line-height:1.6;margin-bottom:40px}
+.ob-dots{display:flex;gap:6px;justify-content:center;margin-bottom:32px}
+.ob-dot{width:6px;height:6px;border-radius:50%;background:#333}
+.ob-dot.active{background:#E8503A;width:20px;border-radius:3px}
+.ob-btn{width:100%;padding:16px;background:#E8503A;border-radius:16px;font-size:16px;font-weight:600;color:#fff;letter-spacing:-.01em}
+.ob-skip{display:block;text-align:center;margin-top:16px;color:#555;font-size:13px}
+
+/* =========================================
+   INPUT FORM
+========================================= */
+#screen-input{background:#0F0F0F}
+.form-header{padding:20px 20px 0;display:flex;align-items:center;gap:12px}
+.form-back{width:36px;height:36px;border-radius:50%;background:#1A1A1A;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px}
+.form-title{font-size:18px;font-weight:600}
+.form-body{padding:24px 20px;flex:1;overflow-y:auto}
+.form-section-title{font-size:11px;color:#888;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px;margin-top:24px}
+.form-section-title:first-child{margin-top:0}
+
+/* SUB CARD INPUT */
+.sub-card{background:#1A1A1A;border:0.5px solid #2A2A2A;border-radius:14px;padding:14px 16px;margin-bottom:10px;position:relative}
+.sub-card-row{display:flex;gap:10px;align-items:center}
+.sub-name-select{flex:1;background:#111;border:0.5px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;-webkit-appearance:none}
+.sub-amount-input{width:100px;background:#111;border:0.5px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;text-align:right}
+.sub-freq-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.freq-btn{padding:5px 10px;border-radius:8px;font-size:11px;background:#222;color:#888;border:0.5px solid #333}
+.freq-btn.active{background:#E8503A22;color:#E8503A;border-color:#E8503A44}
+.sub-delete{position:absolute;top:12px;right:14px;color:#444;font-size:16px}
+.add-sub-btn{width:100%;padding:12px;background:#1A1A1A;border:0.5px dashed #333;border-radius:14px;color:#888;font-size:14px;margin-top:6px}
+
+/* FIXED COST ROWS */
+.fixed-row{background:#1A1A1A;border:0.5px solid #2A2A2A;border-radius:12px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.fixed-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.fixed-label{font-size:13px;color:#aaa;flex:1}
+.fixed-amount-wrap{display:flex;align-items:center;gap:4px}
+.fixed-amount-input{width:88px;background:#111;border:0.5px solid #333;border-radius:10px;color:#fff;padding:8px 10px;font-size:14px;text-align:right}
+.fixed-unit{font-size:13px;color:#666}
+
+.diagnose-btn{width:100%;padding:18px;background:#E8503A;border-radius:18px;font-size:17px;font-weight:700;color:#fff;margin-top:32px;letter-spacing:-.01em}
+.diagnose-btn:disabled{background:#333;color:#666}
+
+/* =========================================
+   LOADING
+========================================= */
+#screen-loading{background:#0A0A0A;align-items:center;justify-content:center}
+.loading-inner{text-align:center;padding:40px}
+.loading-ring{width:60px;height:60px;border:2px solid #1A1A1A;border-top:2px solid #E8503A;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 24px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-label{font-size:14px;color:#666;margin-top:12px}
+.loading-steps{margin-top:32px;text-align:left;max-width:260px}
+.loading-step{font-size:13px;color:#444;padding:6px 0;transition:color .4s}
+.loading-step.done{color:#4CAF7D}
+.loading-step.active{color:#E8503A}
+
+/* =========================================
+   RESULT / HOME DASHBOARD
+========================================= */
+#screen-result{background:#0A0A0A;overflow-y:auto}
+.result-hero{background:#0F0F0F;padding:60px 24px 28px;position:relative}
+.result-hero-badge{display:inline-flex;align-items:center;gap:6px;background:#E8503A18;border:0.5px solid #E8503A44;border-radius:8px;padding:5px 12px;font-size:11px;color:#E8503A;margin-bottom:16px}
+.result-hero-label{font-size:12px;color:#666;letter-spacing:.05em;margin-bottom:8px}
+.result-hero-amount{font-size:52px;font-weight:700;color:#E8503A;letter-spacing:-.03em;line-height:1}
+.result-hero-sub{font-size:13px;color:#555;margin-top:8px}
+.result-hero-type{margin-top:20px;display:inline-block;background:#1A1A1A;border-radius:10px;padding:8px 14px;font-size:13px;color:#aaa}
+.result-hero-type strong{color:#fff}
+
+/* SCORE GRID */
+.score-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:16px;background:#111}
+.score-cell{background:#1A1A1A;border-radius:12px;padding:12px 8px;text-align:center}
+.score-cell-label{font-size:10px;color:#666;margin-bottom:4px}
+.score-cell-grade{font-size:24px;font-weight:700}
+.grade-s{color:#4CAF7D}
+.grade-a{color:#7BC67E}
+.grade-b{color:#E8C53A}
+.grade-c{color:#E8A020}
+.grade-d{color:#E8703A}
+.grade-e{color:#E8503A}
+
+/* LEAK LIST */
+.section{padding:16px 16px 0}
+.section-title{font-size:11px;color:#666;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
+.leak-card{background:#141414;border:0.5px solid #222;border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start}
+.leak-icon{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.leak-icon.red{background:#E8503A18}
+.leak-icon.amber{background:#E8A02018}
+.leak-icon.blue{background:#3B8BD418}
+.leak-icon.green{background:#4CAF7D18}
+.leak-body{flex:1}
+.leak-name{font-size:14px;font-weight:600;margin-bottom:3px}
+.leak-desc{font-size:12px;color:#666}
+.leak-amount{font-size:13px;font-weight:600;color:#E8503A;flex-shrink:0;text-align:right}
+.leak-badge{display:inline-block;margin-top:6px;padding:2px 8px;border-radius:6px;font-size:10px;background:#E8503A18;color:#E8503A}
+
+/* CONVERSIONS */
+.conv-row{display:flex;gap:8px;overflow-x:auto;padding:0 16px 16px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.conv-row::-webkit-scrollbar{display:none}
+.conv-card{background:#141414;border:0.5px solid #222;border-radius:12px;padding:14px 16px;flex-shrink:0;min-width:130px;text-align:center}
+.conv-num{font-size:28px;font-weight:700;color:#fff}
+.conv-unit{font-size:11px;color:#666}
+.conv-label{font-size:12px;color:#888;margin-top:4px}
+
+/* SUGGESTIONS */
+.suggest-card{background:#141414;border:0.5px solid #1A1A1A;border-radius:14px;padding:16px;margin-bottom:10px}
+.suggest-saving{font-size:22px;font-weight:700;color:#4CAF7D;margin-bottom:4px}
+.suggest-action{font-size:14px;font-weight:600;margin-bottom:4px}
+.suggest-desc{font-size:12px;color:#666}
+.suggest-cta{width:100%;margin-top:12px;padding:11px;border-radius:10px;font-size:13px;font-weight:600;background:#4CAF7D18;color:#4CAF7D;border:0.5px solid #4CAF7D33}
+
+/* SHARE */
+.share-section{padding:16px;margin-bottom:100px}
+.share-card{background:#141414;border:0.5px solid #222;border-radius:16px;padding:20px;text-align:center;margin-bottom:12px}
+.share-card-score{font-size:56px;font-weight:800;color:#E8503A;line-height:1}
+.share-card-label{font-size:13px;color:#666;margin-top:4px}
+.share-card-type{margin-top:16px;font-size:18px;font-weight:700}
+.share-card-sub{font-size:12px;color:#666;margin-top:4px}
+.share-btn{width:100%;padding:14px;border-radius:14px;font-size:15px;font-weight:600}
+.share-btn.x{background:#1A1A1A;color:#fff;border:0.5px solid #333;margin-bottom:8px}
+.share-btn.line{background:#00B900;color:#fff}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#0F0F0Fcc;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:0.5px solid #1A1A1A;padding:8px 0 max(env(safe-area-inset-bottom),8px);display:flex;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9px;color:#555;padding:4px 0}
+.nav-item.active{color:#E8503A}
+.nav-icon{font-size:22px;line-height:1}
+
+/* =========================================
+   TOAST
+========================================= */
+.toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:#1A1A1A;border:0.5px solid #333;border-radius:12px;padding:12px 20px;font-size:13px;color:#fff;white-space:nowrap;opacity:0;transition:opacity .3s;pointer-events:none;z-index:200}
+.toast.show{opacity:1}
+
+/* =========================================
+   SUBS SCREEN
+========================================= */
+#screen-subs{background:#0A0A0A;overflow-y:auto;padding-bottom:100px}
+.subs-header{padding:60px 20px 16px;font-size:24px;font-weight:700}
+.sub-list-card{background:#141414;border:0.5px solid #1E1E1E;border-radius:14px;padding:14px 16px;margin:0 16px 8px;display:flex;align-items:center;gap:12px}
+.sub-list-icon{width:38px;height:38px;border-radius:10px;background:#1A1A1A;display:flex;align-items:center;justify-content:center;font-size:16px}
+.sub-list-name{font-size:14px;font-weight:600;flex:1}
+.sub-list-amount{font-size:13px;color:#E8503A;font-weight:600}
+.sub-list-freq{font-size:11px;color:#555;margin-top:2px}
+.sub-list-billing{font-size:11px;color:#666}
+.subs-total{margin:0 16px 16px;background:#1A1A1A;border-radius:14px;padding:16px;display:flex;justify-content:space-between;align-items:center}
+.subs-total-label{font-size:13px;color:#888}
+.subs-total-amount{font-size:22px;font-weight:700;color:#fff}
+</style>
+</head>
+<body>
+
+<!-- ===== ONBOARDING ===== -->
+<div id="screen-onboard" class="screen active">
+<div class="ob-inner">
+  <div class="ob-dots">
+    <div class="ob-dot active" id="dot-0"></div>
+    <div class="ob-dot" id="dot-1"></div>
+    <div class="ob-dot" id="dot-2"></div>
+  </div>
+
+  <div class="ob-step active" id="ob-step-0">
+    <div class="ob-eyebrow">警告</div>
+    <div class="ob-headline">あなたのお金、<br>今も漏れています。</div>
+    <div class="ob-sub">日本人が気づかず失っている<br>年間平均¥163,000。<br>AIがリーク箇所を特定します。</div>
+    <button class="ob-btn" onclick="nextObStep()">次へ →</button>
+    <span class="ob-skip" onclick="startApp()">スキップ</span>
+  </div>
+
+  <div class="ob-step" id="ob-step-1">
+    <div class="ob-eyebrow">AI診断</div>
+    <div class="ob-headline">固定費・サブスクを<br>丸ごと解析。</div>
+    <div class="ob-sub">通信費・保険・クレカ・サブスク<br>すべてをスキャンして<br>「損している箇所」を暴きます。</div>
+    <button class="ob-btn" onclick="nextObStep()">次へ →</button>
+    <span class="ob-skip" onclick="startApp()">スキップ</span>
+  </div>
+
+  <div class="ob-step" id="ob-step-2">
+    <div class="ob-eyebrow">30秒で完了</div>
+    <div class="ob-headline">まず、使っている<br>サブスクを教えて。</div>
+    <div class="ob-sub">3件入力するだけで<br>AIがリーク診断を開始します。<br>登録不要、完全無料。</div>
+    <button class="ob-btn" onclick="startApp()">診断スタート →</button>
+  </div>
+</div>
+</div>
+
+<!-- ===== INPUT FORM ===== -->
+<div id="screen-input" class="screen">
+<div class="form-header">
+  <button class="form-back" onclick="showScreen('screen-onboard')">←</button>
+  <div class="form-title">リーク診断データ入力</div>
+</div>
+<div class="form-body">
+
+  <div class="form-section-title">📱 サブスク（利用中のもの）</div>
+  <div id="sub-list"></div>
+  <button class="add-sub-btn" onclick="addSubCard()">＋ サブスクを追加</button>
+
+  <div class="form-section-title">📡 通信費（月額）</div>
+  <div class="fixed-row">
+    <div class="fixed-icon" style="background:#E8503A18">📱</div>
+    <div class="fixed-label">スマホ料金</div>
+    <div class="fixed-amount-wrap">
+      <input class="fixed-amount-input" type="number" id="mobile-amount" placeholder="6500" min="0" max="50000">
+      <span class="fixed-unit">円</span>
+    </div>
+  </div>
+  <div class="fixed-row">
+    <div class="fixed-icon" style="background:#3B8BD418">🌐</div>
+    <div class="fixed-label">光回線 / Wi-Fi</div>
+    <div class="fixed-amount-wrap">
+      <input class="fixed-amount-input" type="number" id="internet-amount" placeholder="5500" min="0" max="20000">
+      <span class="fixed-unit">円</span>
+    </div>
+  </div>
+
+  <div class="form-section-title">🛡 保険（月額合計）</div>
+  <div class="fixed-row">
+    <div class="fixed-icon" style="background:#4CAF7D18">🛡</div>
+    <div class="fixed-label">保険料 合計</div>
+    <div class="fixed-amount-wrap">
+      <input class="fixed-amount-input" type="number" id="insurance-amount" placeholder="15000" min="0" max="100000">
+      <span class="fixed-unit">円</span>
+    </div>
+  </div>
+
+  <div class="form-section-title">👤 あなたのプロフィール（任意）</div>
+  <div class="fixed-row" style="gap:16px">
+    <select id="user-age" style="flex:1;background:#111;border:0.5px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px">
+      <option value="">年代</option>
+      <option value="18">10代</option>
+      <option value="23">20代前半</option>
+      <option value="27">20代後半</option>
+      <option value="32">30代前半</option>
+      <option value="37">30代後半</option>
+      <option value="45">40代</option>
+    </select>
+    <select id="user-gender" style="flex:1;background:#111;border:0.5px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px">
+      <option value="">性別</option>
+      <option value="male">男性</option>
+      <option value="female">女性</option>
+      <option value="other">その他</option>
+    </select>
+  </div>
+
+  <button class="diagnose-btn" id="diagnose-btn" onclick="startDiagnosis()">🔍 AIリーク診断を開始</button>
+</div>
+</div>
+
+<!-- ===== LOADING ===== -->
+<div id="screen-loading" class="screen">
+<div class="loading-inner">
+  <div class="loading-ring"></div>
+  <div style="font-size:18px;font-weight:700">AIが解析中...</div>
+  <div class="loading-label" id="loading-label">データを収集しています</div>
+  <div class="loading-steps">
+    <div class="loading-step active" id="ls-0">▶ サブスクをスキャン中</div>
+    <div class="loading-step" id="ls-1">▶ 固定費を分析中</div>
+    <div class="loading-step" id="ls-2">▶ 平均値と比較中</div>
+    <div class="loading-step" id="ls-3">▶ リーク箇所を特定中</div>
+    <div class="loading-step" id="ls-4">▶ 改善提案を生成中</div>
+  </div>
+</div>
+</div>
+
+<!-- ===== RESULT ===== -->
+<div id="screen-result" class="screen">
+<div class="result-hero">
+  <div class="result-hero-badge">⚠ AIリーク診断完了</div>
+  <div class="result-hero-label">年間リーク額</div>
+  <div class="result-hero-amount" id="res-amount">¥0</div>
+  <div class="result-hero-sub" id="res-sub">解析完了</div>
+  <div class="result-hero-type">タイプ: <strong id="res-type">-</strong></div>
+</div>
+
+<!-- SCORE GRID -->
+<div class="score-grid">
+  <div class="score-cell"><div class="score-cell-label">通信費</div><div class="score-cell-grade" id="sg-mobile">-</div></div>
+  <div class="score-cell"><div class="score-cell-label">サブスク</div><div class="score-cell-grade" id="sg-sub">-</div></div>
+  <div class="score-cell"><div class="score-cell-label">保険</div><div class="score-cell-grade" id="sg-ins">-</div></div>
+  <div class="score-cell"><div class="score-cell-label">クレカ</div><div class="score-cell-grade" id="sg-card">-</div></div>
+</div>
+
+<!-- LEAKS -->
+<div class="section">
+  <div class="section-title">検出されたリーク</div>
+  <div id="leak-list"></div>
+</div>
+
+<!-- CONVERSIONS -->
+<div class="section"><div class="section-title">💸 失っているもの換算</div></div>
+<div class="conv-row" id="conv-row"></div>
+
+<!-- SUGGESTIONS -->
+<div class="section">
+  <div class="section-title">✅ 改善提案</div>
+  <div id="suggest-list"></div>
+</div>
+
+<!-- SHARE -->
+<div class="share-section">
+  <div class="section-title">📣 結果をシェア</div>
+  <div class="share-card" id="share-card">
+    <div class="share-card-score" id="share-score">38</div>
+    <div class="share-card-label">/ 100点（リークスコア）</div>
+    <div class="share-card-type" id="share-type">サブスク浪費型</div>
+    <div class="share-card-sub" id="share-leak">年間¥182,400 漏れています</div>
+  </div>
+  <button class="share-btn x" onclick="shareToX()">𝕏 でシェア</button>
+  <button class="share-btn line" onclick="shareToLine()">LINE でシェア</button>
+</div>
+</div>
+
+<!-- ===== SUBS SCREEN ===== -->
+<div id="screen-subs" class="screen">
+<div class="subs-header">サブスク管理</div>
+<div class="subs-total">
+  <span class="subs-total-label">月額合計</span>
+  <span class="subs-total-amount" id="subs-total-amount">¥0</span>
+</div>
+<div id="subs-list-view"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav" id="bottom-nav" style="display:none">
+  <div class="nav-item active" onclick="navTo('result')" id="nav-home">
+    <div class="nav-icon">⚡</div>
+    <span>ホーム</span>
+  </div>
+  <div class="nav-item" onclick="navTo('subs')" id="nav-subs">
+    <div class="nav-icon">📋</div>
+    <span>サブスク</span>
+  </div>
+  <div class="nav-item" onclick="showInputScreen()" id="nav-edit">
+    <div class="nav-icon">✏️</div>
+    <span>編集</span>
+  </div>
+</nav>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const GAS_URL = 'YOUR_GAS_DEPLOYED_URL'; // ← デプロイ後のURLに書き換える
+
+// 人気サブスクプリセット
+const SUB_PRESETS = [
+  {name:'Netflix',       monthly:1490, category:'entertainment'},
+  {name:'Spotify',       monthly:980,  category:'entertainment'},
+  {name:'Amazon Prime',  monthly:600,  category:'shopping'},
+  {name:'YouTube Premium',monthly:1280,category:'entertainment'},
+  {name:'iCloud 50GB',   monthly:130,  category:'storage'},
+  {name:'iCloud 200GB',  monthly:400,  category:'storage'},
+  {name:'ChatGPT Plus',  monthly:3000, category:'productivity'},
+  {name:'Adobe CC',      monthly:6480, category:'productivity'},
+  {name:'Disney+',       monthly:990,  category:'entertainment'},
+  {name:'Hulu',          monthly:1026, category:'entertainment'},
+  {name:'Apple TV+',     monthly:900,  category:'entertainment'},
+  {name:'Apple Music',   monthly:1080, category:'entertainment'},
+  {name:'Microsoft 365', monthly:1490, category:'productivity'},
+  {name:'Notion',        monthly:1650, category:'productivity'},
+  {name:'U-NEXT',        monthly:2189, category:'entertainment'},
+  {name:'DAZN',          monthly:4200, category:'entertainment'},
+  {name:'楽天プレミアム',monthly:600,  category:'shopping'},
+  {name:'その他',        monthly:0,    category:'other'},
+];
+
+const FREQ_LABELS = {
+  daily:'毎日', weekly:'週1〜', monthly:'月1', rarely:'たまに', never:'ほぼ未使用'
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  userId      : localStorage.getItem('ml_user_id') || null,
+  subs        : [],
+  fixed       : {},
+  lastResult  : null,
+  currentScreen: 'onboard',
+};
+
+// ============================================================
+// ONBOARDING
+// ============================================================
+let obStep = 0;
+function nextObStep() {
+  document.getElementById('ob-step-'+obStep).classList.remove('active');
+  document.getElementById('dot-'+obStep).classList.remove('active');
+  obStep++;
+  document.getElementById('ob-step-'+obStep).classList.add('active');
+  document.getElementById('dot-'+obStep).classList.add('active');
+}
+
+function startApp() {
+  showScreen('screen-input');
+  initSubCards();
+}
+
+// ============================================================
+// SUB CARDS
+// ============================================================
+let subCards = [];
+
+function initSubCards() {
+  subCards = [
+    {name:'Netflix', monthly:1490, freq:'daily'},
+    {name:'Spotify', monthly:980,  freq:'weekly'},
+    {name:'iCloud 200GB', monthly:400, freq:'daily'},
+  ];
+  renderSubCards();
+}
+
+function renderSubCards() {
+  const el = document.getElementById('sub-list');
+  el.innerHTML = subCards.map((sub, i) => `
+    <div class="sub-card">
+      <button class="sub-delete" onclick="deleteSubCard(${i})">✕</button>
+      <div class="sub-card-row">
+        <select class="sub-name-select" onchange="updateSub(${i},'name',this.value);updateSubAmount(${i},this.value)">
+          ${SUB_PRESETS.map(p=>`<option value="${p.name}" ${sub.name===p.name?'selected':''}>${p.name}</option>`).join('')}
+        </select>
+        <span style="color:#666;font-size:13px">¥</span>
+        <input class="sub-amount-input" type="number" value="${sub.monthly}"
+          onchange="updateSub(${i},'monthly',Number(this.value))" placeholder="0">
+        <span style="color:#666;font-size:13px">/月</span>
+      </div>
+      <div class="sub-freq-row">
+        ${Object.entries(FREQ_LABELS).map(([k,v])=>`
+          <button class="freq-btn ${sub.freq===k?'active':''}" onclick="updateSub(${i},'freq','${k}');renderSubCards()">${v}</button>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function addSubCard() {
+  subCards.push({name:'Netflix', monthly:1490, freq:'monthly'});
+  renderSubCards();
+}
+
+function deleteSubCard(i) {
+  subCards.splice(i,1);
+  renderSubCards();
+}
+
+function updateSub(i, key, val) {
+  subCards[i][key] = val;
+}
+
+function updateSubAmount(i, name) {
+  const preset = SUB_PRESETS.find(p => p.name === name);
+  if (preset) { subCards[i].monthly = preset.monthly; renderSubCards(); }
+}
+
+// ============================================================
+// DIAGNOSIS
+// ============================================================
+async function startDiagnosis() {
+  const mobileAmt   = Number(document.getElementById('mobile-amount').value) || 0;
+  const internetAmt = Number(document.getElementById('internet-amount').value) || 0;
+  const insuranceAmt= Number(document.getElementById('insurance-amount').value) || 0;
+
+  if (subCards.length === 0 && !mobileAmt && !internetAmt && !insuranceAmt) {
+    showToast('少なくとも1件入力してください');
+    return;
+  }
+
+  showScreen('screen-loading');
+  animateLoadingSteps();
+
+  try {
+    // ユーザーID確保
+    if (!state.userId) {
+      const regRes = await gasPost({
+        action: 'register_user',
+        age   : document.getElementById('user-age').value,
+        gender: document.getElementById('user-gender').value,
+      });
+      state.userId = regRes.data.userId;
+      localStorage.setItem('ml_user_id', state.userId);
+    }
+
+    // サブスク保存
+    await gasPost({
+      action       : 'save_subs',
+      userId       : state.userId,
+      subscriptions: subCards.map(s => ({
+        name           : s.name,
+        category       : SUB_PRESETS.find(p=>p.name===s.name)?.category || 'other',
+        monthly_amount : s.monthly,
+        usage_frequency: s.freq,
+        is_active      : true,
+      })),
+    });
+
+    // 固定費保存
+    const fixedCosts = [];
+    if (mobileAmt)    fixedCosts.push({category:'mobile',    monthly_amount:mobileAmt,    provider:''});
+    if (internetAmt)  fixedCosts.push({category:'internet',  monthly_amount:internetAmt,  provider:''});
+    if (insuranceAmt) fixedCosts.push({category:'insurance', monthly_amount:insuranceAmt, provider:''});
+
+    await gasPost({ action:'save_fixed', userId:state.userId, fixed_costs:fixedCosts });
+
+    // 診断実行
+    const diagRes = await gasPost({ action:'run_diagnosis', userId:state.userId });
+    state.lastResult = diagRes.data;
+
+    renderResult(state.lastResult);
+    showScreen('screen-result');
+    document.getElementById('bottom-nav').style.display = 'flex';
+
+  } catch(err) {
+    console.error(err);
+    // GASに繋がらない場合はローカル診断にフォールバック
+    const fallback = localDiagnosis(subCards, {
+      mobile: mobileAmt, internet: internetAmt, insurance: insuranceAmt
+    });
+    state.lastResult = fallback;
+    renderResult(fallback);
+    showScreen('screen-result');
+    document.getElementById('bottom-nav').style.display = 'flex';
+    showToast('オフライン診断モードで実行しました');
+  }
+}
+
+// GASに繋がらない場合のローカル診断（完全クライアントサイド）
+function localDiagnosis(subs, fixed) {
+  const BENCHMARKS = {mobile:4000, internet:4500, insurance:15000};
+  const leaks = [];
+  let totalLeak = 0;
+
+  Object.entries(fixed).forEach(([cat, amount]) => {
+    if (!amount) return;
+    const bench = BENCHMARKS[cat];
+    if (bench && amount > bench) {
+      const diff = (amount - bench) * 12;
+      totalLeak += diff;
+      leaks.push({
+        type:'fixed_cost', category:cat,
+        amount, benchmark:bench, leak_year:diff,
+        grade: amount/bench>2?'D':amount/bench>1.5?'C':'B',
+        suggestion: getSuggestionLocal(cat, amount),
+      });
+    }
+  });
+
+  const unusedSubs = subs.filter(s => s.freq==='rarely'||s.freq==='never');
+  unusedSubs.forEach(sub => {
+    const y = sub.monthly*12;
+    totalLeak += y;
+    leaks.push({
+      type:'unused_sub', category:'subscription',
+      name:sub.name, amount:sub.monthly, leak_year:y, grade:'E',
+      suggestion:`${sub.name}を解約で年間¥${y.toLocaleString()}節約`,
+    });
+  });
+
+  const totalSubMonthly = subs.reduce((s,r)=>s+r.monthly,0);
+  if (totalSubMonthly > 10000) {
+    const diff = (totalSubMonthly-5000)*12;
+    totalLeak += diff;
+    leaks.push({
+      type:'sub_total_high', category:'subscription',
+      amount:totalSubMonthly, leak_year:diff, grade:'D',
+      suggestion:'サブスク全体を見直し、利用頻度の低いものを解約しましょう',
+    });
+  }
+
+  const score = totalLeak<=0?100:totalLeak<=30000?70:totalLeak<=60000?55:totalLeak<=100000?40:totalLeak<=150000?28:18;
+  const types = unusedSubs.length>=2?'サブスク浪費型':fixed.mobile>BENCHMARKS.mobile?'通信費垂れ流し型':'固定費見直し型';
+
+  return {
+    totalLeakYear:totalLeak, score, userType:types, leaks,
+    grades:{
+      mobile     :leaks.find(l=>l.category==='mobile')?.grade||'A',
+      subscription:leaks.find(l=>l.category==='subscription')?.grade||'A',
+      insurance  :leaks.find(l=>l.category==='insurance')?.grade||'A',
+      credit_card:'B',
+    },
+    conversions:[
+      {label:'沖縄旅行',  unit:'回',  value:Math.floor(totalLeak/45000)||0},
+      {label:'iPhone 16', unit:'台',  value:+(totalLeak/152800).toFixed(1)},
+      {label:'高級寿司',  unit:'皿',  value:Math.floor(totalLeak/1000)||0},
+      {label:'スタバ',    unit:'杯',  value:Math.floor(totalLeak/680)||0},
+    ],
+    shareText:`AIにお金のリーク診断してもらったら…\n年間¥${totalLeak.toLocaleString()}も損してた😱\nタイプ：${types}（スコア${score}点）\n#MoneyLeak #お金診断`,
+  };
+}
+
+function getSuggestionLocal(cat, amount) {
+  const map = {
+    mobile   :'ahamoへ変更で月¥2,970〜に削減可能',
+    internet :'NURO光・auひかりで月¥4,000〜に見直し可能',
+    insurance:'掛け捨て型への切り替えで保険料を最適化',
+  };
+  return map[cat] || '見直しで節約できます';
+}
+
+// ============================================================
+// RENDER RESULT
+// ============================================================
+function renderResult(r) {
+  const total = r.totalLeakYear || 0;
+
+  // HERO
+  document.getElementById('res-amount').textContent = '¥'+total.toLocaleString();
+  document.getElementById('res-sub').textContent    = `スコア ${r.score}/100`;
+  document.getElementById('res-type').textContent   = r.userType || '-';
+
+  // GRADE
+  const gMap = {mobile:'sg-mobile', subscription:'sg-sub', insurance:'sg-ins', credit_card:'sg-card'};
+  Object.entries(gMap).forEach(([cat, elId]) => {
+    const g = r.grades?.[cat] || 'A';
+    const el = document.getElementById(elId);
+    el.textContent = g;
+    el.className = 'score-cell-grade grade-'+g.toLowerCase();
+  });
+
+  // LEAKS
+  const leakIcons = {
+    mobile:'📱', internet:'🌐', insurance:'🛡', subscription:'📺', unused_sub:'⚠️', sub_total_high:'📊',
+  };
+  const leakColors = {mobile:'red', internet:'blue', insurance:'green', subscription:'amber', unused_sub:'red', sub_total_high:'amber'};
+  document.getElementById('leak-list').innerHTML = (r.leaks||[]).map(l => `
+    <div class="leak-card">
+      <div class="leak-icon ${leakColors[l.type]||leakColors[l.category]||'amber'}">${leakIcons[l.category]||leakIcons[l.type]||'💸'}</div>
+      <div class="leak-body">
+        <div class="leak-name">${l.name||getCatLabel(l.category)}</div>
+        <div class="leak-desc">${l.suggestion||''}</div>
+        <span class="leak-badge">${l.grade||'?'}ランク</span>
+      </div>
+      <div class="leak-amount">-¥${(l.leak_year||0).toLocaleString()}/年</div>
+    </div>
+  `).join('') || '<div style="color:#555;text-align:center;padding:20px">リーク未検出 🎉</div>';
+
+  // CONVERSIONS
+  document.getElementById('conv-row').innerHTML = (r.conversions||[]).map(c => `
+    <div class="conv-card">
+      <div class="conv-num">${c.value}</div>
+      <div class="conv-unit">${c.unit}</div>
+      <div class="conv-label">${c.label}</div>
+    </div>
+  `).join('');
+
+  // SUGGESTIONS
+  document.getElementById('suggest-list').innerHTML = (r.leaks||[]).slice(0,3).map(l => `
+    <div class="suggest-card">
+      <div class="suggest-saving">年間 +¥${(l.leak_year||0).toLocaleString()} 回収可能</div>
+      <div class="suggest-action">${getCatLabel(l.category)}</div>
+      <div class="suggest-desc">${l.suggestion||''}</div>
+    </div>
+  `).join('');
+
+  // SHARE
+  document.getElementById('share-score').textContent = r.score||0;
+  document.getElementById('share-type').textContent  = r.userType||'-';
+  document.getElementById('share-leak').textContent  = `年間¥${total.toLocaleString()} 漏れています`;
+
+  // SUBS SCREEN
+  renderSubsView();
+}
+
+function getCatLabel(cat) {
+  const m = {mobile:'通信費',internet:'光回線',insurance:'保険',subscription:'サブスク全体',unused_sub:'未使用サブスク',sub_total_high:'サブスク過多',credit_card:'クレジットカード'};
+  return m[cat]||cat;
+}
+
+function renderSubsView() {
+  const total = state.subs ? state.subs.reduce((s,r)=>s+Number(r.monthly||r.monthly_amount||0),0) : 0;
+  document.getElementById('subs-total-amount').textContent = '¥'+total.toLocaleString();
+  document.getElementById('subs-list-view').innerHTML = (state.subs||subCards||[]).map(s => `
+    <div class="sub-list-card">
+      <div class="sub-list-icon">📺</div>
+      <div style="flex:1">
+        <div class="sub-list-name">${s.name}</div>
+        <div class="sub-list-freq">${FREQ_LABELS[s.freq||s.usage_frequency]||''}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="sub-list-amount">¥${(Number(s.monthly||s.monthly_amount)||0).toLocaleString()}/月</div>
+        <div class="sub-list-billing">年間¥${((Number(s.monthly||s.monthly_amount)||0)*12).toLocaleString()}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// SHARE
+// ============================================================
+function shareToX() {
+  const txt = state.lastResult?.shareText || 'AIでお金リーク診断しました #MoneyLeak';
+  const url  = 'https://twitter.com/intent/tweet?text='+encodeURIComponent(txt);
+  window.open(url, '_blank');
+}
+function shareToLine() {
+  const txt = state.lastResult?.shareText || 'MoneyLeakで診断しました';
+  const url  = 'https://social-plugins.line.me/lineit/share?url='+encodeURIComponent(location.href)+'&text='+encodeURIComponent(txt);
+  window.open(url, '_blank');
+}
+
+// ============================================================
+// NAV
+// ============================================================
+function navTo(screen) {
+  ['home','subs','edit'].forEach(n => document.getElementById('nav-'+n)?.classList.remove('active'));
+  if (screen==='result') { showScreen('screen-result'); document.getElementById('nav-home').classList.add('active'); }
+  if (screen==='subs')   { renderSubsView(); showScreen('screen-subs'); document.getElementById('nav-subs').classList.add('active'); }
+}
+
+function showInputScreen() {
+  showScreen('screen-input');
+  document.getElementById('nav-edit').classList.add('active');
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+async function gasPost(body) {
+  const res = await fetch(GAS_URL, {
+    method :'POST',
+    headers:{'Content-Type':'application/json'},
+    body   :JSON.stringify(body),
+  });
+  return res.json();
+}
+
+function showToast(msg, duration=2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), duration);
+}
+
+function animateLoadingSteps() {
+  let step = 0;
+  const steps = document.querySelectorAll('.loading-step');
+  const iv = setInterval(()=>{
+    steps.forEach(s=>s.classList.remove('active','done'));
+    for(let i=0;i<step;i++) steps[i]?.classList.add('done');
+    steps[step]?.classList.add('active');
+    step++;
+    if(step>=steps.length) clearInterval(iv);
+  }, 700);
+}
+
+// 既存ユーザーのデータ復元
+window.addEventListener('DOMContentLoaded', async ()=>{
+  if (state.userId) {
+    try {
+      const res = await gasPost({action:'get_user_data', userId:state.userId});
+      if (res.ok && res.data?.latest_analysis) {
+        state.subs = res.data.subscriptions || [];
+        state.lastResult = res.data.latest_analysis;
+        renderResult(state.lastResult);
+        showScreen('screen-result');
+        document.getElementById('bottom-nav').style.display = 'flex';
+        return;
+      }
+    } catch(_) {}
+  }
+  // 初回 or エラー → オンボーディング
+});
+</script>
+</body>
+</html>
